@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Firebase_version9_RealtimeDB(G'sACADEMY初学者用サンプル)</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .chat-container {
+        width: 360px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #output {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #e5ddd5;
+    }
+
+    .chat-bubble {
+        max-width: 80%;
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 8px;
+        position: relative;
+        clear: both;
+    }
+
+    .chat-bubble.sent {
+        background-color: #dcf8c6;
+        margin-left: auto;
+        text-align: right;
+    }
+
+    .chat-bubble.received {
+        background-color: #fff;
+        margin-right: auto;
+        text-align: left;
+    }
+
+    .chat-bubble .uname {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .chat-input {
+        display: flex;
+        border-top: 1px solid #ddd;
+        background-color: #fafafa;
+        padding: 10px;
+    }
+
+    .chat-input input,
+    .chat-input textarea {
+        flex: 1;
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        outline: none;
+        font-size: 14px;
+    }
+
+    .chat-input button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-left: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .chat-input button:hover {
+        background-color: #45a049;
+    }
+
+    #output::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    #output::-webkit-scrollbar-thumb {
+        background-color: #888;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div id="output"></div>
+    <div class="chat-input">
+        <input type="text" id="uname" placeholder="名前を入力" style="width: 30%;">
+        <textarea id="text" placeholder="メッセージを入力" rows="1" style="width: 60%;"></textarea>
+        <button id="send">送信</button>
+    </div>
+</div>
+
+<!-- JQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- JQuery -->
+
+<!--** Firebaseの設定 **-->
+<script type="module">
+    // Firebase SDKの読み込み
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getDatabase, ref, push, set, update, onChildAdded, remove, onChildChanged, onChildRemoved }
+    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+    
+    // Firebase構成
+    const firebaseConfig = {
+      apiKey: "AIzaSyDcwsZyxvBAGCJA4ECVSePRYaMqt7gWZL8",
+      authDomain: "sample-65a58.firebaseapp.com",
+      projectId: "sample-65a58",
+      storageBucket: "sample-65a58.appspot.com",
+      messagingSenderId: "27049064811",
+      appId: "1:27049064811:web:57cdbde00136e4a78b742e"
+    };
+  
+    // Firebaseの初期化
+    const app = initializeApp(firebaseConfig);
+    const ab = getDatabase(app);
+    const abRef = ref(ab, "chat");
+    
+    // メッセージ送信処理
+    $("#send").on("click", function() {
+       const msg = {
+        uname: $("#uname").val(),
+        text: $("#text").val()
+       }
+       const newPostRef = push(abRef);
+       set(newPostRef, msg);
+    });
+
+    // 新しいメッセージが追加されたときの処理
+    onChildAdded(abRef, function(data) {
+       const msg = data.val();
+       const key = data.key;
+       let bubbleClass = "received"; // デフォルトで受信メッセージとして設定
+       
+       if (msg.uname === $("#uname").val()) { // 送信者のメッセージかどうかを確認
+           bubbleClass = "sent";
+       }
+
+       let h  = '<div class="chat-bubble ' + bubbleClass + '" id="'+key+'">';
+           h += '<div class="uname">'+msg.uname+'</div>';
+           h += '<div class="text">'+msg.text+'</div>';
+           h += '</div>';
+       $("#output").append(h);
+
+       // 新しいメッセージが追加された後、画面をスクロールする
+       $("#output").scrollTop($("#output")[0].scrollHeight);
+    });
+
+    // 削除ボタンのクリックイベント処理
+    $("#output").on("click", ".remove", function() {
+        const key = $(this).attr("data-key");
+        const remove_item = ref(ab, "chat/" + key);
+        remove(remove_item);
+    });
+
+    // 更新ボタンのクリックイベント処理
+    $("#output").on("click", ".update", function() {
+        const key = $(this).attr("data-key");
+        update(ref(ab, "chat/" + key), {
+            text: $("#"+key+'_update').html()
+        });
+    });
+
+    // メッセージが削除されたときの処理
+    onChildRemoved(abRef, function(data) {
+        $("#"+data.key).remove();
+    });
+
+    // メッセージが更新されたときの処理
+    onChildChanged(abRef, function(data) {
+        $("#"+data.key+'_update').html(data.val().text);
+        $("#"+data.key+'_update').fadeOut(800).fadeIn(800);
+    });
+</script>
+
+</body>
+</html>
